@@ -16,3 +16,42 @@ Whilst shinyga() lets you create Shiny dashboards that anyone can connect their 
 * MySQL persistant storage for data blending your data with GA data.
 * Upload option to update MySQL data stored.
 * Analysis of impact of events on your GA data.
+
+## To Use
+
+1. Clone this repository to your own RStudio project.
+2. Get your MySQL setup with a user and IP location, and the GA View ID you want to pull data from. You will also probably need to whitelist the IP of your Shiny Server. Add your local IP for testing too. If you will use shinyapps.io their IPs are:
+ - 54.204.29.251
+ - 54.204.34.9
+ - 54.204.36.75
+ - 54.204.37.78
+3. Create another file called source.r file in the same directory with the below content filled in with your details.  This file is called in functions.r
+
+        # source.r
+        options(mysql = list(
+        "host" = "YOUR SQL IP",
+        "port" = 3306,
+        "user" = "YOUR SQL USER",
+        "password" = "YOUR USER PW",
+        "databaseName" = "onlinegashiny"),
+        rga = list(
+        "profile_id" = "YOUR GA ID",
+        "daysBackToFetch" = 356*3
+        ),
+        shinyMulti = list(
+        "max_plots" = 10
+        ),
+        myCausalImpact = list(
+        'test_time' = 14,
+        'season' = 7
+        ),
+        shiny.maxRequestSize = 0.5*1024^2 ## upload only 0.5 MB
+        )
+4. Install rga() if you need to, then run the below once locally in the same folder to have the app remember your GA OAuth2 settings.
+    
+        ## Run this locally first, to store the auth token.
+        library(rga)
+        rga::rga.open(where="token.rga")
+
+5. Run locally with shiny::runApp() or upload to your shinyapps.io account or your own Shiny server. 
+6. Customise your instance.
