@@ -5,7 +5,7 @@ Live version here: https://mark.shinyapps.io/GA-dashboard-demo
 
 ## Intro
 
-Whilst shinyga() lets you create Shiny dashboards that anyone can connect their own GA data with, the more common use case of creating a dashboard to use just your own data is better served by this example.  This template lets you clone and enter your GA id to quick start your own Shiny dashboard.
+Whilst [shinyga()](https://github.com/MarkEdmondson1234/shinyga) lets you create Shiny dashboards that anyone can connect their own GA data with, the more common use case of creating a dashboard to use just your own data is better served by this example.  This template lets you clone and enter your GA id to quick start your own Shiny dashboard.
 
 ## Features
 
@@ -16,6 +16,13 @@ Whilst shinyga() lets you create Shiny dashboards that anyone can connect their 
 * MySQL persistant storage for data blending your data with GA data.
 * Upload option to update MySQL data stored.
 * Analysis of impact of events on your GA data.
+
+## Screenshots
+
+![Trend](https://github.com/MarkEdmondson1234/ga-dashboard-demo/blob/master/ga-dashboard-demo1.png "Trend and heatmap")
+![Upload to MySQL](https://github.com/MarkEdmondson1234/ga-dashboard-demo/blob/master/ga-dashboard-demo2.png "Upload to MySQL")
+![Analysis of data](https://github.com/MarkEdmondson1234/ga-dashboard-demo/blob/master/ga-dashboard-demo3.png "Data Analysis")
+
 
 ## To Use
 
