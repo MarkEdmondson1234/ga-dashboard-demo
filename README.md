@@ -15,7 +15,8 @@ Whilst [shinyga()](https://github.com/MarkEdmondson1234/shinyga) lets you create
 * Year on Year, Month on Month and Last Month vs same Month Last Year.
 * MySQL persistant storage for data blending your data with GA data.
 * Upload option to update MySQL data stored.
-* Analysis of impact of events on your GA data.
+* Analysis of impact of events on your GA data via Google's CausalImpact
+* Detection of unusual timepoints using Twitter's AnomalyDetection
 
 ## Screenshots
 
