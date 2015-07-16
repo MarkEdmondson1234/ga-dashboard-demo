@@ -33,7 +33,7 @@ Whilst [shinyga()](https://github.com/MarkEdmondson1234/shinyga) lets you create
  - 54.204.34.9
  - 54.204.36.75
  - 54.204.37.78
-3. Create another file called source.r file in the same directory with the below content filled in with your details.  This file is called in functions.r
+3. Create another file called secrets.r file in the same directory with the below content filled in with your details.  This file is called in functions.r
 
         # secrets.r
         options(mysql = list(
