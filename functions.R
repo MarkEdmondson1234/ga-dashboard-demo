@@ -11,17 +11,20 @@ library(googlesheets)
 library(DT)
 library(RMySQL)
 library(CausalImpact)
+library(AnomalyDetection)
 
 # I have the below in a file I source that is not on github
-source('secrets.R')
+message(getwd())
+source('secrets.r')
+# secrets.r has this in it:
 # options(mysql = list(
-#   "host" = "YOUR SQL IP",
+#   "host" = "xxxx",
 #   "port" = 3306,
-#   "user" = "YOUR SQL USER",
+#   "user" = "shinyapps",
 #   "password" = "YOUR USER PW",
 #   "databaseName" = "onlinegashiny"),
 #   rga = list(
-#     "profile_id" = "YOUR GA ID",
+#     "profile_id" = "xxxxxx",
 #     "daysBackToFetch" = 356*3
 #   ),
 #   shinyMulti = list(
@@ -33,7 +36,6 @@ source('secrets.R')
 #   ),
 #   shiny.maxRequestSize = 0.5*1024^2 ## upload only 0.5 MB
 # )
-
 
 ## Run this locally first, to store the auth token.
 ## this is then uploaded with the shiny app for future requests.
@@ -62,6 +64,27 @@ get_ga_data <- function(profileID,
 
   return(ga_data)
   
+}
+
+## Twitter's AnomalyDetection
+## https://github.com/twitter/AnomalyDetection
+anomalyDetect <- function(data, ...){
+  
+  if("date" != names(data)[1]){
+    stop("'date' must be in first column of data")
+  }
+  
+  if(ncol(data) > 2){
+    warning("More than two columns detected in data, only first that isn't 'date' is used")
+  }
+  
+ data <- data[,1:2]
+  
+ data$date <- as.POSIXct(data$date)
+ data[is.na(data[,2]),2] <- 0
+ 
+ a_result <- AnomalyDetectionTs(data, plot = T, ...)
+   
 }
 
 

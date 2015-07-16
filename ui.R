@@ -100,8 +100,10 @@ dashboardPage(skin = "purple",
                p("The estimated impact of the uploaded events on total traffic is shown below."),
                uiOutput("multiple_plots")
              ),
-             tabPanel("Something else",
-                      p("Forecasting")
+             tabPanel("Anomaly Detection",
+                      p("What dates had unusual activity?"),
+                      plotOutput("anomalyPlot"),
+                      DT::dataTableOutput("anomalyTable")
                       
                       )
            )

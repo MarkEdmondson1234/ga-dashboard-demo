@@ -32,6 +32,33 @@ shinyServer(function(input, output, session) {
     
   })
   
+  anomalyData <- reactive({
+    data <- ga_data()
+    ## make reactive to choice
+    
+    anomalyDetect(data[,c('date','total')])
+    
+  })
+  
+  output$anomalyPlot <- renderPlot({
+    
+    adata <- anomalyData()
+    
+    adata$plot
+  })
+  
+  output$anomalyTable <- DT::renderDataTable({
+    a_table <- anomalyData()$anoms
+    
+    a_table$timestamp <- as.Date(as.character(a_table$timestamp))
+    
+    # names(a_table) <- c("Anomaly Date", "Value")
+    
+    a_table 
+    
+    
+  })
+  
   output$date_shown <- renderText({
 
     pdata <- plot_date_data()
@@ -64,9 +91,9 @@ shinyServer(function(input, output, session) {
   })
   
   output$heatmap <- renderD3heatmap({
-    validate(
-      need(is.null(plot_date_data()), "Plot data")
-    )
+#     validate(
+#       need(is.null(plot_date_data()), "Plot data")
+#     )
     
     hm_data <- plot_date_data()
     
