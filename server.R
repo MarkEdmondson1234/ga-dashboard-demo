@@ -13,6 +13,8 @@ source('functions.R')
 max_plots <- options()$shinyMulti$max_plots
 
 shinyServer(function(input, output, session) {
+  
+  message(getwd())
 
   ga_data <- reactive({
     
@@ -145,11 +147,13 @@ shinyServer(function(input, output, session) {
       dySeries("V1", color = "#8a48a4", label = str_to_title(choice) )
     
     ## a dreaded for loop, but it makes sense for this?
-    for(i in 1:length(events$date)){
-      d <- d %>% dyEvent(events$date[i], label = events$eventname[i]) 
+    if(!is.null(events)){
+      for(i in 1:length(events$date)){
+        d <- d %>% dyEvent(events$date[i], label = events$eventname[i]) 
+      }
     }
-    
-    d
+
+    return(d)
     
   })
   
@@ -205,36 +209,47 @@ shinyServer(function(input, output, session) {
     
     if(is.null(eventUploaded)){
       ## get it from the SQL database instead
-      uploaded_csv <- loadData("onlineGAshiny_events")
+      uploaded_csv <- try(loadData("onlineGAshiny_events"))
       
-      return(uploaded_csv)
+      if(!is.error(uploaded_csv)){
+        return(uploaded_csv)        
+      } else {
+        message("No event data found in SQL")
+        return(NULL)
+      }
+
       
     } else {
       uploaded_csv <- try(read.csv(eventUploaded$datapath, stringsAsFactors = F))
-      ## check uploaded_csv
       
-      if(all(names(uploaded_csv) %in% c('date', 'eventname'))){
+      if(!is.error(uploaded_csv)){
+        ## check uploaded_csv
         
-        uploaded_csv <- uploaded_csv[complete.cases(uploaded_csv),]
-        
-        ## convert dates
-        dates_guessed <- as.Date(uploaded_csv$date,
-                                 guess_formats(uploaded_csv$date, 
-                                               c("Y-m-d", "m-d-Y")))
-        message("Dates: ", dates_guessed)
-        uploaded_csv$date <- dates_guessed
-        
-        uploadBool <- overWriteTable("onlineGAshiny_events", uploaded_csv)
-        
-        if(uploadBool) message("File uploaded successfully.")
-        
-        return(uploaded_csv)          
+        if(all(names(uploaded_csv) %in% c('date', 'eventname'))){
+          
+          uploaded_csv <- uploaded_csv[complete.cases(uploaded_csv),]
+          
+          ## convert dates
+          dates_guessed <- as.Date(uploaded_csv$date,
+                                   guess_formats(uploaded_csv$date, 
+                                                 c("Y-m-d", "m-d-Y")))
+          message("Dates: ", dates_guessed)
+          uploaded_csv$date <- dates_guessed
+          
+          uploadBool <- overWriteTable("onlineGAshiny_events", uploaded_csv)
+          
+          if(uploadBool) message("File uploaded successfully.")
+          
+          return(uploaded_csv)          
+          
+        } else {
+          stop("File did not include 'date' and 'eventname' columns.  Found: ", names(uploaded_csv))
+        }       
         
       } else {
-        stop("File did not include 'date' and 'eventname' columns.  Found: ", names(uploaded_csv))
+        message("Problem uploading file.")
+        return(NULL)
       }
-        
-         
     }
     
   })
@@ -264,33 +279,43 @@ shinyServer(function(input, output, session) {
   output$multiple_plots <- renderUI({
     events <- eventData()
     
-    ci_sig_output_list <- lapply(1:nrow(events), function(i){
-      ci_sig_name <- paste("ci_sig", i, sep="")
-      valueBoxOutput(ci_sig_name)
-    })
-    
-    ci_rel_output_list <- lapply(1:nrow(events), function(i){
-      ci_sig_name <- paste("ci_rel", i, sep="")
-      valueBoxOutput(ci_sig_name)
-    })
-    
-    null_plot_list <- lapply(1:nrow(events), function(i){
-      null_plot_name <- paste("null_plot", i, sep="")
-      box(width = 8, dygraphOutput(null_plot_name, height = "300px"))
-    })
-    
-    for(i in 1:nrow(events)){
-      add <- c(null_plot_list[i], ci_sig_output_list[i],ci_rel_output_list[i] )
-      if(i>1){
-        output_list <- c(output_list, add)        
-      } else {
-        output_list <- add
+    if(!is.null(events)){
+      ci_sig_output_list <- lapply(1:nrow(events), function(i){
+        ci_sig_name <- paste("ci_sig", i, sep="")
+        valueBoxOutput(ci_sig_name)
+      })
+      
+      ci_rel_output_list <- lapply(1:nrow(events), function(i){
+        ci_sig_name <- paste("ci_rel", i, sep="")
+        valueBoxOutput(ci_sig_name)
+      })
+      
+      null_plot_list <- lapply(1:nrow(events), function(i){
+        null_plot_name <- paste("null_plot", i, sep="")
+        box(width = 8, dygraphOutput(null_plot_name, height = "300px"))
+      })
+      
+      for(i in 1:nrow(events)){
+        add <- c(null_plot_list[i], ci_sig_output_list[i],ci_rel_output_list[i] )
+        if(i>1){
+          output_list <- c(output_list, add)        
+        } else {
+          output_list <- add
+        }
+        
       }
-
+      
+      all_the_plots <- do.call(tagList, output_list)
+      
+      return(fluidRow(all_the_plots))     
+      
+    } else {
+      
+    return(NULL)
+      
     }
     
-    all_the_plots <- do.call(tagList, output_list)
-    fluidRow(all_the_plots)
+ 
   })
   
 
