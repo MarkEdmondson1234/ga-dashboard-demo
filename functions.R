@@ -14,9 +14,9 @@ library(CausalImpact)
 library(AnomalyDetection)
 
 # I have the below in a file I source that is not on github
-message(getwd())
-source('secrets.r')
-# secrets.r has this in it:
+message("functions.R called from ", getwd())
+source('secrets.R')
+# secrets.R has this in it:
 # options(mysql = list(
 #   "host" = "xxxx",
 #   "port" = 3306,
@@ -52,7 +52,7 @@ get_ga_data <- function(profileID,
   all_start <-  ga$getFirstDate(profileID)
   start <- today() - options()$rga$daysBackToFetch
   yesterday <- today() -1
-
+  
   message("# Fetching GA data")
   ga_data <- ga$getData(ids = profileID,
                         start.date = start,
@@ -61,7 +61,7 @@ get_ga_data <- function(profileID,
                         dimensions = fetch_dimensions,
                         filters = fetch_filter,
                         batch = T)
-
+  
   return(ga_data)
   
 }
@@ -69,6 +69,26 @@ get_ga_data <- function(profileID,
 ## Twitter's AnomalyDetection
 ## https://github.com/twitter/AnomalyDetection
 anomalyDetect <- function(data, ...){
+  message("Anomaly detection")
+  if("date" != names(data)[1]){
+    stop("'date' must be in first column of data")
+  }
+  
+  if(ncol(data) > 2){
+    warning("More than two columns detected in data, only first that isn't 'date' is used")
+  }
+  
+  data <- data[,1:2]
+  
+  data$date <- as.POSIXct(data$date)
+  data[is.na(data[,2]),2] <- 0
+  
+  a_result <- AnomalyDetectionTs(data, plot = T, ...)
+  
+}
+
+
+aggregate_data <- function(data, agg_period){
   
   if("date" != names(data)[1]){
     stop("'date' must be in first column of data")
@@ -78,14 +98,35 @@ anomalyDetect <- function(data, ...){
     warning("More than two columns detected in data, only first that isn't 'date' is used")
   }
   
- data <- data[,1:2]
+  agg_data <- data[,1:2]
   
- data$date <- as.POSIXct(data$date)
- data[is.na(data[,2]),2] <- 0
- 
- a_result <- AnomalyDetectionTs(data, plot = T, ...)
-   
+  
+  ## aggregate data if not agg == date
+  if(agg_period %in% c('week', 'month', 'year')){
+    old_names <- names(agg_data)
+    names(agg_data) <- c("date","metric")
+    agg_data <- tbl_df(agg_data)
+    date_type_function <- period_function_generator(agg_period, pad=T)
+    
+    agg_data <-  agg_data %>% 
+      mutate(period_type = paste0(year(date),
+                                  "_",
+                                  date_type_function(date))) %>%
+      group_by(period_type) %>%
+      dplyr::summarise(date = min(date),
+                       metric = sum(metric))
+    
+    agg_data <- data.frame(agg_data)
+    names(agg_data) <- c(agg_period, old_names)
+    agg_data$date <- as.Date(agg_data$date)
+  } else {
+    
+  }
+  
+  agg_data
+  
 }
+
 
 
 ## utility to create a time period finder on a date
@@ -108,13 +149,13 @@ period_function_generator <- function(period, pad=FALSE){
     
     function(x){
       gsub(" ","0", sprintf("%2d",f(x)))
-      } 
+    } 
     
-    } else {
-      f
-    }    
-    
-  }
+  } else {
+    f
+  }    
+  
+}
 
 lag_time <- function(period, amount=1L, data_date = Sys.Date()){
   
@@ -147,7 +188,7 @@ calcPeriodChange <- function (data, time_period) {
   ## make the period column
   data$period    <- period_f(data$date)
   now_period     <- period_f(today())
-
+  
   lag_one_period <- period_f(lag_time(time_period, 1))
   lag_one_total <- sum(data[data$period == lag_one_period &
                               year(data$date) == year(today()),2], 
@@ -162,7 +203,7 @@ calcPeriodChange <- function (data, time_period) {
                                 year(data$date) == year(today()),2], 
                          na.rm=T)
     
-      } else if(time_period == "monthYear") {
+  } else if(time_period == "monthYear") {
     lag_two_period <- period_f(lag_time(time_period, 13))
     lag_two_total <- sum(data[data$period == lag_two_period &
                                 year(data$date) == year(lag_time(time_period, 13)),2], 

@@ -15,7 +15,7 @@ max_plots <- options()$shinyMulti$max_plots
 shinyServer(function(input, output, session) {
   
   message(getwd())
-
+  
   ga_data <- reactive({
     
     ## get your profile ID of your GA account to pull from
@@ -34,25 +34,53 @@ shinyServer(function(input, output, session) {
   
   anomalyData <- reactive({
     data <- ga_data()
+    choice <- input$medium_select
     ## make reactive to choice
+    agg    <- input$agg_select
     
-    anomalyDetect(data[,c('date','total')])
+    agg_data <- aggregate_data(data[,c('date', choice)], agg)
+    
+    ad <- try(anomalyDetect(agg_data[,c('date', choice)], direction="both", max_anoms = 0.05))
+    
+    if(!is.error(ad)){
+      return(ad)
+    } else {
+      NULL
+    }
+    
+  })
+  
+  anomalyData2 <- reactive({
+    data <- ga_data()
+    choice <- input$medium_select2
+    ## make reactive to choice
+    agg    <- input$agg_select2
+    max_a <- input$max_anoms
+    
+    agg_data <- aggregate_data(data[,c('date', choice)], agg)
+    
+    ad <- try(anomalyDetect(agg_data[,c('date', choice)], direction="both", max_anoms = max_a))
+    
+    if(!is.error(ad)){
+      return(ad)
+    } else {
+      NULL
+    }
     
   })
   
   output$anomalyPlot <- renderPlot({
     
-    adata <- anomalyData()
+    anomalyData2()$plot
     
-    adata$plot
   })
   
   output$anomalyTable <- DT::renderDataTable({
-    a_table <- anomalyData()$anoms
+    a_table <- anomalyData2()$anoms
     
     a_table$timestamp <- as.Date(as.character(a_table$timestamp))
     
-    # names(a_table) <- c("Anomaly Date", "Value")
+    names(a_table) <- c("Anomaly Date", "Value")
     
     a_table 
     
@@ -60,7 +88,7 @@ shinyServer(function(input, output, session) {
   })
   
   output$date_shown <- renderText({
-
+    
     pdata <- plot_date_data()
     
     min_date <- as.character(min(pdata$date))
@@ -83,7 +111,7 @@ shinyServer(function(input, output, session) {
     max_date <- plot1_dates[2]
     
     pdata <- data[data$date > min_date &
-                  data$date < max_date,]
+                    data$date < max_date,]
     
     pdata <- pdata[,colnames(pdata) %in% c("date", choice)]
     
@@ -91,9 +119,9 @@ shinyServer(function(input, output, session) {
   })
   
   output$heatmap <- renderD3heatmap({
-#     validate(
-#       need(is.null(plot_date_data()), "Plot data")
-#     )
+    #     validate(
+    #       need(is.null(plot_date_data()), "Plot data")
+    #     )
     
     hm_data <- plot_date_data()
     
@@ -104,7 +132,7 @@ shinyServer(function(input, output, session) {
     hm_data$week <- paste0(year(hm_data$date), 
                            " W", 
                            week_pad(hm_data$date)
-                           )
+    )
     
     names(hm_data) <- c("date", "sessions", "wday", "week")
     
@@ -124,7 +152,7 @@ shinyServer(function(input, output, session) {
               Colv = FALSE,
               labRow = row.names(hm_m),
               labCol = colnames(hm_m)
-              )
+    )
     
     
     
@@ -137,38 +165,41 @@ shinyServer(function(input, output, session) {
   })
   
   output$plot1 <- renderDygraph({
-
+    
     data   <- ga_data()
     choice <- input$medium_select
     agg    <- input$agg_select
     events <- eventData()
+    anomalies <- anomalyData()$anoms
     
     agg_data <- data[,c('date', choice)]
     names(agg_data) <- c('date', 'metric')
     
-    ## aggregate data if not agg == date
-    if(agg %in% c('week', 'month', 'year')){
-      agg_data <- tbl_df(agg_data)
-      date_type_function <- period_function_generator(agg, pad=T)
-      
-      agg_data <-  agg_data %>% 
-        mutate(period_type = paste0(year(date),
-                                    "_",
-                                   date_type_function(date))) %>%
-        group_by(period_type) %>%
-        summarise(date = min(date),
-                  metric = sum(metric))
-      
-      agg_data <- data.frame(agg_data)
-    }
+    agg_data <- aggregate_data(data[,c('date', choice)], agg)
+    
+    #     ## aggregate data if not agg == date
+    #     if(agg %in% c('week', 'month', 'year')){
+    #       agg_data <- tbl_df(agg_data)
+    #       date_type_function <- period_function_generator(agg, pad=T)
+    #       
+    #       agg_data <-  agg_data %>% 
+    #         mutate(period_type = paste0(year(date),
+    #                                     "_",
+    #                                     date_type_function(date))) %>%
+    #         group_by(period_type) %>%
+    #         summarise(date = min(date),
+    #                   metric = sum(metric))
+    #       
+    #       agg_data <- data.frame(agg_data)
+    #     }
     
     ## dygraph needs a time-series, zoo makes it easier
-    ts_data <- zoo(agg_data[,'metric'], 
+    ts_data <- zoo(agg_data[,choice], 
                    order.by = agg_data[,'date'])
     
     start <- Sys.Date() - 450
     end <- Sys.Date() - 1
-      
+    
     d <- dygraph(ts_data, main=str_to_title(paste(choice, "Sessions "))) %>%
       dyRangeSelector(dateWindow = c(start, end)) %>%
       dySeries("V1", color = "#8a48a4", label = str_to_title(choice) )
@@ -179,7 +210,17 @@ shinyServer(function(input, output, session) {
         d <- d %>% dyEvent(events$date[i], label = events$eventname[i]) 
       }
     }
-
+    
+    if(!is.null(anomalies)){
+      for(i in 1:length(anomalies$timestamp))
+        d <- d %>% dyAnnotation(anomalies$timestamp[i], 
+                                text = paste("Anomaly"),
+                                tooltip = paste("Anomaly:", anomalies$anoms[i]),
+                                attachAtBottom = T,
+                                width = 60,
+                                height = 25)
+    }
+    
     return(d)
     
   })
@@ -192,7 +233,7 @@ shinyServer(function(input, output, session) {
     wow_data <- data[,c('date', choice)]
     
     valueBoxTimeOnTime(wow_data, "week")
-  
+    
   })
   
   output$MoM <- renderValueBox({
@@ -203,7 +244,7 @@ shinyServer(function(input, output, session) {
     mom_data <- data[,c('date', choice)]
     
     valueBoxTimeOnTime(mom_data, "month")
-
+    
     
   })
   
@@ -219,17 +260,17 @@ shinyServer(function(input, output, session) {
     
   })
   
-#   eventData <- reactive({
-#     eventUploaded <- input$eventUploadFile
-#     
-#     if(is.null(eventUploaded)){
-#       return(NULL)
-#     }
-#     
-#     read.csv(eventUploaded$datapath)
-#     
-#     
-#   })
+  #   eventData <- reactive({
+  #     eventUploaded <- input$eventUploadFile
+  #     
+  #     if(is.null(eventUploaded)){
+  #       return(NULL)
+  #     }
+  #     
+  #     read.csv(eventUploaded$datapath)
+  #     
+  #     
+  #   })
   
   eventData <- reactive({
     eventUploaded <- input$eventUploadFile
@@ -244,7 +285,7 @@ shinyServer(function(input, output, session) {
         message("No event data found in SQL")
         return(NULL)
       }
-
+      
       
     } else {
       uploaded_csv <- try(read.csv(eventUploaded$datapath, stringsAsFactors = F))
@@ -299,7 +340,7 @@ shinyServer(function(input, output, session) {
     ci_list <- getCausalImpactList(ts_data, events)
     
     ## data via lapply(ci_list, function(x) summary(x[[1]]))
- 
+    
   })
   
   ## loop over possible events
@@ -319,7 +360,7 @@ shinyServer(function(input, output, session) {
       
       null_plot_list <- lapply(1:nrow(events), function(i){
         null_plot_name <- paste("null_plot", i, sep="")
-        box(width = 8, dygraphOutput(null_plot_name, height = "300px"))
+        box(width = 8, status="primary", dygraphOutput(null_plot_name, height = "300px"))
       })
       
       for(i in 1:nrow(events)){
@@ -338,20 +379,20 @@ shinyServer(function(input, output, session) {
       
     } else {
       
-    return(NULL)
+      return(NULL)
       
     }
     
- 
+    
   })
   
-
+  
   ### loops over events
   for(i in 1:max_plots){
     #local needed to have reevaluation of i
     local({
       my_i <- i
-
+      
       ## the dynamic output for this Box     
       ci_sig_name <- paste("ci_sig", i, sep="")
       output[[ci_sig_name]] <- renderValueBox({
@@ -371,7 +412,7 @@ shinyServer(function(input, output, session) {
             )
           } else {
             valueBox(
-              "Not Significant", 
+              "No Effect", 
               "Its likely that any effect observed is just by chance",
               icon = icon("thumbs-o-down"),
               color = "red"
@@ -437,7 +478,7 @@ shinyServer(function(input, output, session) {
   } # end loop over plots
   
   
-
-
-
+  
+  
+  
 })
