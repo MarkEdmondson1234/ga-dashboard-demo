@@ -260,18 +260,6 @@ shinyServer(function(input, output, session) {
     
   })
   
-  #   eventData <- reactive({
-  #     eventUploaded <- input$eventUploadFile
-  #     
-  #     if(is.null(eventUploaded)){
-  #       return(NULL)
-  #     }
-  #     
-  #     read.csv(eventUploaded$datapath)
-  #     
-  #     
-  #   })
-  
   eventData <- reactive({
     eventUploaded <- input$eventUploadFile
     
@@ -328,20 +316,55 @@ shinyServer(function(input, output, session) {
     
   })
   
-  casualImpactData <- reactive({
+  causalImpactData <- reactive({
     
     ci       <- ga_data()
     events   <- eventData()
     
-    ## dygraph needs a time-series, zoo makes it easier
     ts_data <- zoo(ci[,'total'], 
                    order.by = ci[,'date'])
     
     ci_list <- getCausalImpactList(ts_data, events)
     
-    ## data via lapply(ci_list, function(x) summary(x[[1]]))
+    ## get data via Reduce(rbind, lapply(events$eventname, function(x) ci_list[[x]]$summary)))
     
   })
+  
+  causalTable <- reactive({
+    ci_list <- causalImpactData()
+    events   <- eventData()
+    
+    ## output cumulative totals only
+    ci_l <- plyr::ldply(lapply(events$eventname, function(x) 
+      ci_list[[x]]$summary[row.names(ci_list[[x]]$summary) == "Cumulative",])
+    )
+    ci_l$eventname <- events$eventname
+    
+    ci_l
+  })
+  
+  output$CausalPlotSummary <- renderPlot({
+    ct <- causalTable()
+    
+    if(!is.null(ct)){
+      ct$sig <- ifelse(ct$p < ct$alpha, "Significant" , "Not Significant")
+      
+      gg <- ggplot(ct, aes(x = eventname, y = AbsEffect, fill = sig)) + theme_bw()
+      
+      gg <- gg + geom_bar(stat="identity")  + scale_fill_brewer(palette = "Set1")
+      
+      gg <- gg + ylab("Estimated Total Impact") + xlab("Event Type") + guides(fill=FALSE, alpha=FALSE)
+      
+      gg <- gg + geom_text(aes(x = eventname, y = -100, label = sig))
+      
+      print(gg)
+      
+    }
+    
+    
+    
+  })
+  
   
   ## loop over possible events
   output$multiple_plots <- renderUI({
@@ -361,6 +384,11 @@ shinyServer(function(input, output, session) {
       null_plot_list <- lapply(1:nrow(events), function(i){
         null_plot_name <- paste("null_plot", i, sep="")
         box(width = 8, status="primary", dygraphOutput(null_plot_name, height = "300px"))
+      })
+      
+      ci_table_list <- lapply(1:nrow(events), function(i){
+        ci_table_name <- paste("ci_table", i, sep="")
+        DT::renderDataTable(ci_table_name)
       })
       
       for(i in 1:nrow(events)){
@@ -393,10 +421,22 @@ shinyServer(function(input, output, session) {
     local({
       my_i <- i
       
+      #       ## the dynamic output for this Table     
+      #       ci_table_name <- paste("ci_table", i, sep="")
+      #       output[[ci_table_name]] <- DT::renderDataTable({
+      #         ci_l <- causalImpactData()
+      #         events <- eventData()
+      #         ## accessing the CI list summary for this event
+      #         ci <- ci_l[[events$eventname[my_i]]]$summary
+      # 
+      #       })     
+      
+      
+      
       ## the dynamic output for this Box     
       ci_sig_name <- paste("ci_sig", i, sep="")
       output[[ci_sig_name]] <- renderValueBox({
-        ci_l <- casualImpactData()
+        ci_l <- causalImpactData()
         events <- eventData()
         ## accessing the CI list summary for this event
         ci <- ci_l[[events$eventname[my_i]]]$summary
@@ -430,7 +470,7 @@ shinyServer(function(input, output, session) {
       ## dynamic output for Box 2
       ci_rel_name <- paste("ci_rel", i, sep="")
       output[[ci_rel_name]] <- renderValueBox({
-        ci_l <- casualImpactData()
+        ci_l <- causalImpactData()
         events <- eventData()
         ## accessing the CI list summary for this event
         ci <- ci_l[[events$eventname[my_i]]]$summary
@@ -457,7 +497,7 @@ shinyServer(function(input, output, session) {
       null_plot_name <- paste("null_plot", i, sep="")
       output[[null_plot_name]] <- renderDygraph({
         
-        ci_l <- casualImpactData()
+        ci_l <- causalImpactData()
         events <- eventData()
         ci <- ci_l[[events$eventname[my_i]]]$series
         

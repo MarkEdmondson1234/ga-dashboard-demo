@@ -91,15 +91,16 @@ dashboardPage(skin = "purple",
                                             textOutput("current_week"),
                                             d3heatmapOutput("heatmap", height="800px")
                                             
+                                   ),
+                                   tabPanel(title=tagList(shiny::icon("thumbs-up"), "Event Impact"),
+                                            helpText("The estimated impact of the events on total sessions for two weeks is shown below, as well as if the impact can be considered statistically significant.  Get more detail in the analysis section."),
+                                            plotOutput("CausalPlotSummary")
                                    )
                                    
+                                   
                             )
+                            
                           )
-                          # ,
-                          #                           fluidRow(  #row 2
-                          #                             
-                          #                           )
-                          
                   ),
                   # second tab content
                   tabItem(tabName = "join",

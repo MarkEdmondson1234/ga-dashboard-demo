@@ -11,6 +11,7 @@ library(DT)
 library(RMySQL)
 library(CausalImpact)
 library(AnomalyDetection)
+library(ggplot2)
 
 # I have the below in a file I source that is not on github
 message("functions.R called from ", getwd())
