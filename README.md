@@ -1,7 +1,9 @@
 # ga-dashboard-demo
 A demo on how to build your own Google Analytics dashboard with R, Shiny and MySQL
 
-Live version here: https://mark.shinyapps.io/GA-dashboard-demo
+A guide blogpost here: http://markedmondson.me/enhance-your-google-analytics-data-with-r-and-shiny-free-online-dashboard-template 
+
+Live demo version here: https://mark.shinyapps.io/GA-dashboard-demo
 
 ## Intro
 
