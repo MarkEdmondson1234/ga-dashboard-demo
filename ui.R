@@ -76,7 +76,7 @@ dashboardPage(skin = "purple",
                             tabBox(title = "", width=12,
                                    tabPanel(title=tagList(shiny::icon("line-chart"), "Trend"),
                                             helpText("Click and drag on the plot to zoom and select date ranges.  Events that have been uploaded to the MySQL backend are shown as dotted lines, and unusual time points are annotated below them."),
-                                            selectInput("agg_select", 
+                                            selectInput("agg_select",
                                                         "Select Trend Type",
                                                         choices = c("Day" = "day",
                                                                     "Week" = "week",
@@ -91,15 +91,15 @@ dashboardPage(skin = "purple",
                                             helpText("Zoom in by selecting with the mouse.  This heatmap representation of the data helps show if the day of the week holds any patterns."),
                                             textOutput("current_week"),
                                             d3heatmapOutput("heatmap", height="800px")
-                                            
+
                                    ),
                                    tabPanel(title=tagList(shiny::icon("thumbs-up"), "Event Impact"),
                                             helpText("The estimated impact of the events on total sessions for two weeks is shown below, as well as if the impact can be considered statistically significant.  Get more detail in the analysis section."),
                                             plotOutput("CausalPlotSummary")
                                    )
-                                   
-                                   
-                            )
+
+
+                            ) #tabBox
                             
                           )
                   ),
@@ -132,14 +132,14 @@ dashboardPage(skin = "purple",
                   tabItem(tabName = "analyse",
                           h2("Deepdive Analysis"),
                           helpText("This section demonstrates some R packages that work with time-series data.  This leverages the strength of using R for dashboarding. "),
-                          tabBox("Select Analysis", width = 12,
-                                 tabPanel(tagList(shiny::icon("thumbs-up"), "Event Effects"),
+                          tabBox(title = "Select Analysis", width = 12,
+                                 tabPanel(title = tagList(shiny::icon("thumbs-up"), "Event Effects"),
                                           helpText("The estimated impact of the uploaded events on total traffic is shown below.  It uses code similar to the GA Effect app linked in the menu to the left."),
                                           uiOutput("multiple_plots")
-                                 ),
-                                 tabPanel(tagList(shiny::icon("exclamation"), "Anomaly Detection"),
+                                 ), # tabPanel1
+                                 tabPanel(title = tagList(shiny::icon("exclamation"), "Anomaly Detection"),
                                           helpText("What dates had unusual activity?  This uses Twitter's AnomalyDetection package to find unusual activity.  Fine tune the dates shown using the controls below."),
-                                          selectInput("medium_select2", 
+                                          selectInput("medium_select2",
                                                       "Select Plot Channel",
                                                       choices = c("All" = "total",
                                                                   "Direct" = "(none)",
@@ -148,7 +148,7 @@ dashboardPage(skin = "purple",
                                                                   "Referral" = "referral",
                                                                   "Social" = "social")
                                           ),
-                                          selectInput("agg_select2", 
+                                          selectInput("agg_select2",
                                                       "Select Plot Date Type",
                                                       choices = c("Day" = "day",
                                                                   "Week" = "week",
@@ -163,9 +163,10 @@ dashboardPage(skin = "purple",
                                                       step = 0.05),
                                           plotOutput("anomalyPlot"),
                                           DT::dataTableOutput("anomalyTable")
-                                          
-                                 )
-                          )
+
+                                 ) # tabPanel2
+                          ) #tabBox
+
                   )
                 )
                 
